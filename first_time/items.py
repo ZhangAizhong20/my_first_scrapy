@@ -31,8 +31,8 @@ class Comment(scrapy.Item):
     author_location = scrapy.Field()
     time = scrapy.Field()
     subcomments = scrapy.Field(serializer=lambda x: [dict(item) for item in x])
-    def add_subcomment(self, subcomment):
-        self.setdefault('subcomments', []).append(subcomment)
+    # def add_subcomment(self, subcomment):
+    #     self.setdefault('subcomments', []).append(subcomment)
 
 
 class Subcomment(scrapy.Item):

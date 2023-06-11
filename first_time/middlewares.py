@@ -3,12 +3,15 @@
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 import time
+import random
 
+from bs4 import BeautifulSoup
 from scrapy.http import HtmlResponse
-from scrapy import signals
+from scrapy import signals, Selector
 
 # useful for handling different item types with a single interface
 from itemadapter import is_item, ItemAdapter
+
 
 # from spiders.one_page import OnePageSpider
 
@@ -28,7 +31,6 @@ class FirstTimeSpiderMiddleware:
     def process_spider_input(self, response, spider):
         # Called for each response that goes through the spider
         # middleware and into the spider.
-
         # Should return None or raise an exception.
         return None
 
@@ -83,31 +85,49 @@ class FirstTimeDownloaderMiddleware:
         # - or raise IgnoreRequest: process_exception() methods of
         #   installed downloader middleware will be called
 
-
-
-
+        # if 'content-autofill.googleapis.com' in request.url:
+        #     raise scrapy.exceptions.IgnoreRequest("Blocked by middleware")
         return None
 
     def process_response(self, request, response, spider):
+
+        # return  response
+        # return response
         # Called with the response returned from the downloader.
         # pass
         # Must either;
         # - return a Response object
         # - return a Request object
         # - or raise IgnoreRequest
-         #响应对象中存储页面数据的篡改
+        # 响应对象中存储页面数据的篡改
         # print('即将返回一个新的响应对象!!!')
         # #如何获取动态加载出来的数据
         bro = spider.driver
         bro.get(url=request.url)
-        time.sleep(0.5)
-        #包含了动态加载出来的新闻数据
+        time.sleep(0.25)
         page_text = bro.page_source
 
-        # js = 'window.scrollTo(0,document.body.scrollHeight)'
-        # bro.execute_script(js)
-        # time.sleep(1)
-        return HtmlResponse(url=spider.driver.current_url,body=page_text,encoding='utf-8',request=request)
+        soup = BeautifulSoup(page_text, 'html.parser')
+        comments = soup.select('#comment_all_content > div > div')
+        i = 1
+        for comment in comments:
+            # comment_all_content > div > div:nth-child(5) > div > div.level2_box > div.level2_list > div.view_more > span
+            subcom_number = 0
+            try:
+                # 判断是否需要点击
+                subcom_number = int(
+                    comment.select_one('div > div.level2_box > div.level2_list > div.view_more > span').text)
+            except:
+                subcom_number = 0
+            if subcom_number > 0:
+                but = bro.find_element("css selector", f"#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.view_more > a")
+                but.click()
+                time.sleep(0.02)
+            i += 1
+            time.sleep(0.1)
+
+        page_text = bro.page_source
+        return HtmlResponse(url=spider.driver.current_url, body=page_text, encoding='utf-8', request=request)
 
     def process_exception(self, request, exception, spider):
         # Called when a download handler or a process_request()
@@ -123,6 +143,23 @@ class FirstTimeDownloaderMiddleware:
         spider.logger.info("Spider opened: %s" % spider.name)
 
 
+class RandomUserAgentMiddleware(object):
+
+    def __init__(self, user_agent_list):
+        self.user_agent_list = user_agent_list
+
+    # @classmethod
+    # def from_crawler(cls, crawler):
+    #     settings = crawler.settings
+    #     user_agent_list = settings.get('USER_AGENT_LIST')
+    #     return cls(user_agent_list)
+
+    def process_request(self, request, spider):
+        user_agent = random.choice(self.user_agent_list)
+        request.headers.setdefault('User-Agent', user_agent)
+
+    def process_response(self, request, response, spider):
+        return response
 # 快代理中间键，拦截请求
 # 动态爬取建议直接初始化代理
 # class ProxyDownloaderMiddleware:

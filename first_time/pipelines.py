@@ -39,11 +39,13 @@ def process_datetime(datetime_str):
             except ValueError:
                 pass
     except:
-        return f'{datetime_str}_error'
+        return datetime_str
 
 
 def process_likes(like: str):
     if like == '点赞':
+        return 0
+    elif like is None:
         return 0
     else:
         return int(like)
@@ -95,6 +97,14 @@ class MongoDBPipeline:
                 comment['author_location'] = None
             comment['time'] = process_datetime(comment['time'])
             comment['likes'] = process_likes(comment['likes'])
+            for subcomment in comment['subcomments']:
+                subcomment['subtime'] = process_datetime(str(subcomment['subtime']))
+                try:
+                    subcomment['subauthor_location'] = subcomment['subauthor_location'][-2:]
+                except:
+                    subcomment['subauthor_location'] = None
+                subcomment['subtime'] = process_datetime(subcomment['subtime'])
+
         print(data)
         # comments = data.pop('comments')  # 取出评论列表
         # data['comments'] = json.dumps(comments)

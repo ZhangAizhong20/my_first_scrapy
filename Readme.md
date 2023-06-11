@@ -1,8 +1,7 @@
-# ZAZ 折寿奉献，请勿外传，请暂时不要用于任何商业活动。
-
+# ZAZ 折寿奉献，请熟悉scrapy框架后使用
 #### 建议使用pycharm, vscode不太聪明的样子
-
-### 除了first_time这个是我自己的，其他的包缺哪个就pip吧，请务必使用单独的虚拟环境
+### 爬取东方财富股吧的帖子，评论，以及展开子评论，在middleware中实现自动展开子评论，需要使用mongodb数据库存储信息数据库配置，在settings和pipline中修改，
+### 缺哪个就pip吧，请务必使用单独的虚拟环境
  * 主要修改位置，spider文件下的total.py
 
  * 直接隐藏类别total_page
@@ -18,8 +17,8 @@
         self.end_page = 4
         self.tunnelhost = "k321.kdltps.com"
         self.tunnelport = "15818"
-        self.proxy_username = "t17941167792939"
-        self.proxy_password = "790msm5i"
+        self.proxy_username = "XXX"
+        self.proxy_password = "XXXX"
         self.use_password = True  #不挂代理直接false就完事了
         self.use_ip = True #同上
         chrome_options = webdriver.ChromeOptions()
@@ -70,8 +69,8 @@ class Zazesus(total_page):
 ```
 b不要另外开一个py文件，就在total下面继续写！！！！！，因为我尝试重开一个发现继承不过去
 ###关于代理
-
-使用快代理——隧道代理———按量计费———更换ip时间1分钟，最大请求数量差不多一秒6-8次就行，带宽3mb够用
+###非常重要！！因为是实例化浏览器，为了防止链接复用，更换ip时常请务必调大
+使用快代理——隧道代理———按量计费———更换ip时间24小时，最大请求数量差不多一秒6-8次就行，带宽3mb够用，
 ！！！以上是针对一个终端的代理
 
 ###单个爬虫终端运行
