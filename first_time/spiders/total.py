@@ -80,29 +80,25 @@ class total_page(scrapy.Spider):
         }
 
         self.header = {"Connection": "close"}
-
         self.driver = webdriver.Chrome(chrome_options=chrome_options)
 
     def start_requests(self):
        
         '''
         设置起始页码和结束页码
+        发送请求
         '''
         begin_page = self.begin_page
-        max_page = self.end_page
-
-        
+        max_page = self.end_page       
         stock_id = self.Stock_id
         current_id = stock_id
-        for i in range(begin_page, max_page + 1):
-            
+        for i in range(begin_page, max_page + 1):           
             yield Request(
                 url='https://guba.eastmoney.com/list,{}_{}.html'.format(current_id, i),
                 headers=self.header,
                 callback=self.list_info,
                 cb_kwargs={'stock_id': current_id, 'current_page': i},
             )
-
 
     def parse(self, response: HtmlResponse, **kwargs):
         pass
@@ -159,16 +155,15 @@ class total_page(scrapy.Spider):
                 continue
 
     def norm_full_page(self, response: HtmlResponse, **kwargs):
-
-        
-
+        '''
+            对普通页面进行解析，获得帖子的主要内容，作者ip，发布时间，
+        '''
         sel = Selector(response)
         html = response.text  # 将网页源码转换格式为html
         soup = BeautifulSoup(html, features="lxml")
         stock = kwargs['stock']  # zwconttb > div.zwfbtime > span
         # print(html)
         stock['maintext'] = self.clear_str(soup.find('div', {'id': 'post_content'}).text)
-        # stock['author'] = sel.css(
         stock['author_ip'] = sel.css(
             '#line2 > div.post_author_info.fl.cl > span.post_ip.fl::text').extract_first()  # zwconttb > div.zwfbtime > span
         stock['publish_time'] = sel.css('#line2 > div.post_author_info.fl.cl > span.post_time.fl::text').extract_first()
@@ -184,15 +179,11 @@ class total_page(scrapy.Spider):
                 '#newspage > span > span:nth-child(1) > span::text').get())  # newspage > span > span:nth-child(1) > span
         except:
             pass
-
-        if 1 < com_page:
-            # newspage > span > span:nth-child(1) > a.on
-            # newspage > span > span:nth-child(1) > a:nth-child(3)
+        # 如果有很多页评论，则重新发送一个新的request，并调用评论解析函数
+        if com_page > 1:
             target_page = 1
-
             target_url = sel.css(
-                f'#newspage > span > span:nth-child(1) > a:nth-child({target_page + 1})::attr(href)').get()  # newspage > span > span:nth-child(1) > a:nth-child(4)
-            # newspage > span > span:nth-child(1) > a:nth-child(3)
+                f'#newspage > span > span:nth-child(1) > a:nth-child({target_page + 1})::attr(href)').get()  
             yield Request(url='https://guba.eastmoney.com{}'.format(target_url), callback=self.norm_comment,
                           cb_kwargs={'stock': stock, 'current_page': target_page, 'total_page': com_page},
                           headers=self.header,
@@ -228,30 +219,15 @@ class total_page(scrapy.Spider):
                         'div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
                 for subcomment in subcomments:
                     com['subcomments'].append(dict(process_sub_comment(subcomment)))
-
-                # try:
-                #     subcom_page = int(comment.css(
-                #         'div > div.level2_box > div.level2_list > div.sreply_pager > span > span > span::text').get())
-                # except:
-                #     subcom_page = 0
-                # if subcom_page > 1:
-                #     for p in range(2, subcom_page + 1):
-                #         posi = f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.sreply_pager > span > span > a[data-page="{p}"]'
-                #         but = self.driver.find_element("css selector", posi)
-                #         but.click()
-                #         subcomment_page = self.driver.page_source
-                #         subcom_soup = BeautifulSoup(subcomment_page, 'html.parser')
-                #         subcomments = subcom_soup.select(
-                #             f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
-                #         for subcomment in subcomments:
-                #             com['subcomments'].append(dict(process_sub_comment(subcomment)))
-
                 stock['comments'].append(dict(com))
                 i += 1
             print('readytoyield')
             yield stock
 
     def norm_comment(self, response: HtmlResponse, **kwargs):
+        '''
+        在中间键部分，程序已经对需要展开的子评论进行了搜索并点击，如果在解析完这一页评论后发现还有后续子评论，则该def会继续调用自身，并将其封装到同一个实例化class中
+        '''
         i = 1
         sel = Selector(response)
         current_page = kwargs[
@@ -283,24 +259,6 @@ class total_page(scrapy.Spider):
                     'div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
             for subcomment in subcomments:
                 com['subcomments'].append(dict(process_sub_comment(subcomment)))
-
-            # try:
-            #     subcom_page = int(comment.css(
-            #         'div > div.level2_box > div.level2_list > div.sreply_pager > span > span > span::text').get())
-            # except:
-            #     subcom_page = 0
-            # if subcom_page > 1:
-            #     for p in range(2, subcom_page + 1):
-            #         posi = f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.sreply_pager > span > span > a[data-page="{p}"]'
-            #         but = self.driver.find_element("css selector", posi)
-            #         but.click()
-            #         subcomment_page = self.driver.page_source
-            #         subcom_soup = BeautifulSoup(subcomment_page, 'html.parser')
-            #         subcomments = subcom_soup.select(
-            #             f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
-            #         for subcomment in subcomments:
-            #             com['subcomments'].append(dict(process_sub_comment(subcomment)))
-
             stock['comments'].append(dict(com))
             i += 1
 
@@ -316,13 +274,13 @@ class total_page(scrapy.Spider):
                           # wait_time=self.time_sleep
                           )
             print('success yield request')
-
         else:
             yield stock
-        # cb_kwargs={'stock':stock,'current_page':target_page,'total_page':com_page}    
 
     def caifuhao_full_page(self, response: HtmlResponse, **kwargs):
-
+        '''
+        财富号的页面解析方式和普通页面不同，因此这里为其单独撰写的方法，但评论爬取收集的方式和普通页面基本一致
+        '''
         sel = Selector(response)
         html = response.text  # 将网页源码转换格式为html
         soup = BeautifulSoup(html, features="lxml")
@@ -358,7 +316,7 @@ class total_page(scrapy.Spider):
                           # wait_time=self.time_sleep
                           )
 
-        # 没发现就算了呗
+        # 若没有更多的评论
         else:
             comment_list = sel.css('#comment_all_content > div > div')
             i = 1
@@ -386,27 +344,8 @@ class total_page(scrapy.Spider):
                         'div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
                 for subcomment in subcomments:
                     com['subcomments'].append(dict(process_sub_comment(subcomment)))
-                #
-                # try:
-                #     subcom_page = int(comment.css(
-                #         'div > div.level2_box > div.level2_list > div.sreply_pager > span > span > span::text').get())
-                # except:
-                #     subcom_page = 0
-                # if subcom_page > 1:
-                #     for p in range(2, subcom_page + 1):
-                #         posi = f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.sreply_pager > span > span > a[data-page="{p}"]'
-                #         but = self.driver.find_element("css selector", posi)
-                #         but.click()
-                #         subcomment_page = self.driver.page_source
-                #         subcom_soup = BeautifulSoup(subcomment_page, 'html.parser')
-                #         subcomments = subcom_soup.select(
-                #             f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
-                #         for subcomment in subcomments:
-                #             com['subcomments'].append(dict(process_sub_comment(subcomment)))
-
                 stock['comments'].append(dict(com))
                 i += 1
-
             yield stock
 
     def caifuhao_comment(self, response: HtmlResponse, **kwargs):
@@ -438,32 +377,9 @@ class total_page(scrapy.Spider):
                 com['subcomments'].append(dict(process_sub_comment(subcomment)))
 
             stock['comments'].append(dict(com))
-            # try:
-            #     subcom_page = int(comment.css(
-            #         'div > div.level2_box > div.level2_list > div.sreply_pager > span > span > span::text').get())
-            # except:
-            #     subcom_page = 0
-            # if subcom_page > 1:
-            #     for p in range(2, subcom_page + 1):
-            #         posi = f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.sreply_pager > span > span > a[data-page="{p}"]'
-            #         but = self.driver.find_element("css selector", posi)
-            #         but.click()
-            #         subcomment_page = self.driver.page_source
-            #         subcom_soup = BeautifulSoup(subcomment_page, 'html.parser')
-            #         subcomments = subcom_soup.select(
-            #             f'#comment_all_content > div > div:nth-child({i}) > div > div.level2_box > div.level2_list > div.level2_item.viewmoreL2')
-            #         for subcomment in subcomments:
-            #             com['subcomments'].append(dict(process_sub_comment(subcomment)))
-            #
-
-            # i += 1
-        # 判断一共有几页，没找到就说明只有一个页码
-        # 加入subcomment
-        # comment_all_content > div > div:nth-child(14) > div > div.level2_box > div.level2_list > div.sreply_pager > span > span > span
         try:
             total_comment_page = int(sel.css(
                 '#newspage > span > span:nth-child(1) > span::text').get())  # newspage > span > span:nth-child(1) > a:nth-child(3)
-
         except:
             total_comment_page = 1
 
@@ -501,8 +417,8 @@ class Zazesus1(total_page):
         self.proxy_password = "XXXX"
         self.pox_id = 'XXXX'
         self.pox_sec = 'XXXX'
-        self.use_password = True
-        self.use_ip = True
+        self.use_password = False
+        self.use_ip = False
 
         self.header = {"Connection": "close"}
         custom_settings = {

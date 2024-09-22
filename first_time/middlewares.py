@@ -90,9 +90,6 @@ class FirstTimeDownloaderMiddleware:
         return None
 
     def process_response(self, request, response, spider):
-
-        # return  response
-        # return response
         # Called with the response returned from the downloader.
         # pass
         # Must either;
@@ -102,6 +99,10 @@ class FirstTimeDownloaderMiddleware:
         # 响应对象中存储页面数据的篡改
         # print('即将返回一个新的响应对象!!!')
         # #如何获取动态加载出来的数据
+        """
+        这里的主要作用是判断当前页面中的评论是否有展开更多评论的按钮，如果有则将页面中所有可以展开的评论
+        按钮全部点击，点击完成后再将其封装为htmlresponse传送给spider进行解析
+        """
         bro = spider.driver
         bro.get(url=request.url)
         time.sleep(0.25)
@@ -148,12 +149,6 @@ class RandomUserAgentMiddleware(object):
     def __init__(self, user_agent_list):
         self.user_agent_list = user_agent_list
 
-    # @classmethod
-    # def from_crawler(cls, crawler):
-    #     settings = crawler.settings
-    #     user_agent_list = settings.get('USER_AGENT_LIST')
-    #     return cls(user_agent_list)
-
     def process_request(self, request, spider):
         user_agent = random.choice(self.user_agent_list)
         request.headers.setdefault('User-Agent', user_agent)
@@ -184,3 +179,4 @@ class RandomUserAgentMiddleware(object):
 #             from scrapy.resolver import dnscache
 #             dnscache.__delitem__(ProxyDownloaderMiddleware._proxy[0])  # 删除proxy host的dns缓存
 #         return exception
+
